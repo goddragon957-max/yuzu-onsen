@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#1d120b" />
+    <title>유자 노천탕 — 조용히 머무는 온라인 온천 & 사우나</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+    />
+  </head>
+  <body>
+    <!-- 3D WebGL 캔버스 컨테이너 -->
+    <div id="scene-root" aria-label="유자 노천탕 3D 공간"></div>
+
+    <!-- 좌측 상단 HUD (사우나 고요 .hud.tl 스타일) -->
+    <header class="hud tl" id="hud-tl">
+      <div class="brand">YUZU ONSEN · 유자 노천탕</div>
+      <div class="room">
+        <span id="room-zone-title">중앙 유자 대노천탕</span>
+        <small id="room-zone-sub">바위 노천 온천 · 낮 설경</small>
+      </div>
+      <div class="ppl">
+        <span id="conn-dot" class="dot"></span>
+        <span>
+          <span id="channel-label" class="room-ch">제1온천 · </span>
+          <span>여기 <b id="ppl-here">7</b>명</span>
+          <span class="muted-seg">(손님 <span id="ppl-human">1</span> · 마스코트 6)</span>
+        </span>
+      </div>
+      <div class="note" id="hud-note">
+        실제 손님과 카피바라·온천 고양이가 조용히 함께 쉬고 있어요.
+      </div>
+    </header>
+
+    <!-- 우측 상단 HUD (사우나 고요 .hud.tr 수온계 & 온기 게이지) -->
+    <aside class="hud tr" id="hud-tr">
+      <div class="therm">
+        <b id="temp-val">41.2</b>
+        <span>°C</span>
+        <small id="temp-label">탕 수온</small>
+      </div>
+      <div class="meta">
+        <span>머문 시간 <b id="stay-timer">00:00</b></span>
+        <span>바가지 <b id="splash-count">0</b>회</span>
+      </div>
+      <div class="bar">
+        <div class="bar-label-row">
+          <span>몸의 온기</span>
+          <span id="focus-status-text">노곤노곤</span>
+        </div>
+        <div class="bar-track">
+          <i id="heat-fill" style="width: 45%"></i>
+        </div>
+      </div>
+      <div class="sets">
+        <button type="button" class="step now" data-quick-zone="main_bath">1 대노천탕</button>
+        <button type="button" class="step" data-quick-zone="hinoki_bath">2 편백탕</button>
+        <button type="button" class="step" data-quick-zone="footbath">3 외기욕</button>
+        <button type="button" class="step" data-quick-zone="pavilion">4 매점·마루</button>
+      </div>
+    </aside>
+
+    <!-- 상단 중앙 토스트 알림 -->
+    <div id="toast" class="toast" hidden role="status" aria-live="polite"></div>
+
+    <!-- 좌측 하단 조작 힌트 -->
+    <p class="hint" id="hint-text">
+      바닥·탕을 클릭해 이동 · 드래그로 시점 회전 · 마우스 휠로 확대/축소
+    </p>
+
+    <!-- 모자(머리 위 아이템) 선택 트레이 -->
+    <div id="tray-hat" class="tray" hidden role="dialog" aria-label="머리 위 아이템 선택">
+      <p class="trayTitle">머리 위에 올릴 아이템 & 이름표 설정</p>
+      <div class="chips" id="tray-hat-chips">
+        <button type="button" class="chip" data-hat="ignis" aria-checked="true">
+          <svg viewBox="0 0 40 40">
+            <circle cx="20" cy="25" r="9" fill="#e39a62" />
+            <rect x="11" y="14" width="18" height="3.5" rx="1.5" fill="#f4ebd9" />
+            <circle cx="20" cy="10" r="5.5" fill="#ffa200" />
+            <ellipse cx="24" cy="5.5" rx="3" ry="1.5" transform="rotate(-20 24 5.5)" fill="#4d9038" />
+          </svg>
+          <span>노란 유자</span>
+        </button>
+        <button type="button" class="chip" data-hat="astra" aria-checked="false">
+          <svg viewBox="0 0 40 40">
+            <circle cx="20" cy="24" r="9.5" fill="#e39a62" />
+            <path d="M9 21a11 11 0 0 1 22 0z" fill="#f5ecdc" />
+            <circle cx="9" cy="17" r="4.8" fill="#f5ecdc" stroke="#d9cdb8" stroke-width="1.2" />
+            <circle cx="31" cy="17" r="4.8" fill="#f5ecdc" stroke="#d9cdb8" stroke-width="1.2" />
+          </svg>
+          <span>양머리 수건</span>
+        </button>
+        <button type="button" class="chip" data-hat="sylph" aria-checked="false">
+          <svg viewBox="0 0 40 40">
+            <circle cx="20" cy="26" r="9" fill="#e39a62" />
+            <path d="M8 24c3-2 4-13 12-16 8 3 9 14 12 16z" fill="#8a9e7b" />
+            <circle cx="20" cy="7" r="3.5" fill="#ffcf40" />
+          </svg>
+          <span>사우나햇·오리</span>
+        </button>
+        <button type="button" class="chip" data-hat="terra" aria-checked="false">
+          <svg viewBox="0 0 40 40">
+            <circle cx="20" cy="25" r="9.5" fill="#e39a62" />
+            <rect x="10" y="13" width="20" height="4" rx="1.5" fill="#f4ebd9" />
+            <rect x="11" y="9.5" width="18" height="3.5" rx="1.5" fill="#e8781f" />
+          </svg>
+          <span>접은 수건</span>
+        </button>
+      </div>
+      <form id="form-profile-inline" class="inline-profile-form">
+        <input
+          id="input-profile-name"
+          type="text"
+          maxlength="16"
+          placeholder="닉네임 (최대 16자)"
+        />
+        <input
+          id="input-profile-topic"
+          type="text"
+          maxlength="24"
+          placeholder="상태 (예: 코딩중 / 반신욕 휴식)"
+        />
+        <button type="submit" class="mini-submit-btn">이름표 변경</button>
+      </form>
+    </div>
+
+    <!-- 공간 이동 & 채널 선택 트레이 -->
+    <div id="tray-space" class="tray" hidden role="dialog" aria-label="공간 및 시점 이동">
+      <p class="trayTitle">구역 바로 이동 & 카메라 시점</p>
+      <div class="spaces">
+        <button type="button" class="spaceBtn" data-move-zone="main_bath" aria-current="true">
+          <span class="n">1</span>
+          <b>중앙 유자 대노천탕</b>
+          <small>41.2°C · 대나무 낙수대와 카피바라 바위섬</small>
+        </button>
+        <button type="button" class="spaceBtn" data-move-zone="hinoki_bath" aria-current="false">
+          <span class="n">2</span>
+          <b>동쪽 히노끼 편백탕</b>
+          <small>40.5°C · 은은한 솔향기 목조 노천탕</small>
+        </button>
+        <button type="button" class="spaceBtn" data-move-zone="footbath" aria-current="false">
+          <span class="n">3</span>
+          <b>외기욕 쉼터 & 모닥불</b>
+          <small>숲속 원목 리클라이너 선베드 & 장작불</small>
+        </button>
+        <button type="button" class="spaceBtn" data-move-zone="pavilion" aria-current="false">
+          <span class="n">4</span>
+          <b>온천 본관 툇마루 & 매점</b>
+          <small>식혜·바나나우유 가판대와 낮잠 자는 치즈 고양이</small>
+        </button>
+        <button type="button" class="spaceBtn" data-cam-only="overview" aria-current="false">
+          <span class="n">·</span>
+          <b>온천 마을 전체 한눈에 보기</b>
+          <small>드래그와 휠로 전체 경내 조망</small>
+        </button>
+      </div>
+
+      <div class="roomPick">
+        <div class="trayTitle">접속 채널 변경 (총 100개 채널)</div>
+        <div class="roomList" id="quick-room-list"></div>
+        <button type="button" id="btn-open-all-rooms" class="full-room-btn">
+          1~100번 전체 채널 목록 보기 ▾
+        </button>
+      </div>
+    </div>
+
+    <!-- 매점 간식 주문 트레이 -->
+    <div id="tray-snack" class="tray" hidden role="dialog" aria-label="온천 매점 간식">
+      <p class="trayTitle">온천 매점 간식 (캐릭터 오른손에 장착)</p>
+      <div class="menuGrid">
+        <button type="button" class="menuBtn" data-snack="sikhye">
+          <span class="menuDot" style="background: #efe2c2"></span>
+          <span>살얼음 식혜</span>
+        </button>
+        <button type="button" class="menuBtn" data-snack="banana_milk">
+          <span class="menuDot" style="background: #ffe97d"></span>
+          <span>뚱바 바나나우유</span>
+        </button>
+        <button type="button" class="menuBtn" data-snack="egg">
+          <span class="menuDot" style="background: #b07a4a"></span>
+          <span>맥반석 구운란</span>
+        </button>
+        <button type="button" class="menuBtn" data-snack="yuzu_tea">
+          <span class="menuDot" style="background: #ffb703"></span>
+          <span>따뜻한 유자차</span>
+        </button>
+      </div>
+      <div class="snack-actions-row">
+        <button type="button" id="btn-use-snack" class="mini-submit-btn">
+          😋 한 모금 / 한 입 먹기
+        </button>
+        <button type="button" id="btn-drop-snack" class="mini-secondary-btn">
+          손에서 내려놓기
+        </button>
+      </div>
+    </div>
+
+    <!-- 물 위 소원 유자 방명록 트레이 -->
+    <div id="tray-wish" class="tray" hidden role="dialog" aria-label="소원 유자 띄우기 및 방명록">
+      <p class="trayTitle">따뜻한 온천물에 소원 유자 띄우기</p>
+      <form id="form-wish" class="wish-inline-form">
+        <input
+          id="input-wish-message"
+          type="text"
+          maxlength="80"
+          placeholder="오늘의 다짐이나 작은 소원을 적어 유자에 띄워보세요 🍊"
+          required
+        />
+        <button type="submit" class="mini-submit-btn">띄우기</button>
+      </form>
+      <p class="trayTitle" style="margin-top: 10px">
+        물 위에 떠 있는 소원 유자 (<span id="wish-count-label">0</span>)
+      </p>
+      <div id="wish-feed-list" class="wish-feed-scroll"></div>
+    </div>
+
+    <!-- 더보기 설정 트레이 (계절·시간대 / 30분 집중 타이머 / 사운드 믹서) -->
+    <div id="tray-more" class="tray" hidden role="dialog" aria-label="환경 및 소리 설정">
+      <p class="trayTitle">환경 설정 & 자연의 소리</p>
+      <div class="more-grid">
+        <button type="button" id="btn-weather-cycle" class="menuBtn">
+          <span>❄️ 풍경: 겨울 낮 설경</span>
+        </button>
+        <button type="button" id="btn-focus-timer" class="menuBtn">
+          <span>⏱️ 30분 반신욕 집중 타이머</span>
+        </button>
+        <button type="button" id="btn-bell-ring" class="menuBtn">
+          <span>🎋 대나무 낙수대(시시오도시) 울리기</span>
+        </button>
+        <button type="button" id="btn-audio-mute" class="menuBtn">
+          <span>🔊 자연의 소리: 켜짐</span>
+        </button>
+      </div>
+      <div class="mixer-sliders">
+        <label class="vol-row">
+          <span>🌊 온천 물소리</span>
+          <input id="slider-water" type="range" min="0" max="100" value="80" />
+        </label>
+        <label class="vol-row">
+          <span>🍃 산바람 소리</span>
+          <input id="slider-wind" type="range" min="0" max="100" value="65" />
+        </label>
+        <label class="vol-row">
+          <span>🔥 장작불 소리</span>
+          <input id="slider-fire" type="range" min="0" max="100" value="70" />
+        </label>
+      </div>
+    </div>
+
+    <!-- 하단 중앙 액션 바 (사우나 고요 .actions 스타일) -->
+    <nav class="actions" id="actions-bar" aria-label="온천 행동 메뉴">
+      <button type="button" id="btn-act-splash" title="바가지로 온천수 끼얹기 (Space)">
+        <span>🪣 물 끼얹기</span>
+      </button>
+      <button type="button" id="btn-act-sit">
+        <span id="sit-action-label">일어서기</span>
+      </button>
+      <button type="button" id="btn-act-bow">
+        <span>🙇 인사하기</span>
+      </button>
+      <button type="button" id="btn-act-snack" aria-expanded="false">
+        <span>🥤 매점 간식</span>
+      </button>
+      <button type="button" id="btn-act-wish" aria-expanded="false">
+        <span>🍊 소원 유자</span>
+      </button>
+      <span class="sep" aria-hidden="true"></span>
+      <button type="button" id="btn-act-hat" aria-expanded="false">
+        <span>🐑 모자</span>
+      </button>
+      <button type="button" id="btn-act-space" aria-expanded="false">
+        <span>🚪 공간 이동</span>
+      </button>
+      <button type="button" id="btn-act-more" aria-expanded="false">
+        <span>⋯ 더보기</span>
+      </button>
+    </nav>
+
+    <!-- 전체 100개 채널 모달 -->
+    <div id="modal-rooms" class="entry" hidden role="dialog" aria-modal="true">
+      <div class="card card-wide">
+        <div class="modal-head-row">
+          <h2>전체 100개 온천 채널 선택</h2>
+          <button type="button" id="btn-close-rooms" class="close-pill-btn">닫기</button>
+        </div>
+        <input
+          id="input-room-search"
+          type="search"
+          class="search-box"
+          placeholder="채널 번호나 테마 검색 (예: 16, 편백, 유자, 벚꽃...)"
+        />
+        <div id="room-list-container" class="all-rooms-grid"></div>
+      </div>
+    </div>
+
+    <!-- 첫 입장 웰컴 카드 (사우나 고요 #entry 와 동일한 감성) -->
+    <div id="entry-overlay" class="entry" role="dialog" aria-modal="true" aria-labelledby="entry-title">
+      <div class="card">
+        <h1 id="entry-title">
+          유자 노천탕
+          <span>YUZU ROTENBURO · 온라인 온천</span>
+        </h1>
+        <p class="tagline">말없이 머무는 온라인 유자 노천탕</p>
+        <p class="lead">
+          따뜻한 김이 피어오르는 노천탕에 앉아 물소리와 바람 소리를 들으며 각자의 시간을 보내는 곳이에요. 대화창은 없어요. 가볍게 목례를 나누거나 소원 유자를 물에 띄워 보세요.
+        </p>
+        <p class="label">머리 위 아이템 고르기</p>
+        <div class="chips" id="entry-hat-chips" role="radiogroup" aria-label="머리 위 아이템">
+          <button type="button" class="chip" data-hat="ignis" aria-checked="true">
+            <svg viewBox="0 0 40 40">
+              <circle cx="20" cy="25" r="9" fill="#e39a62" />
+              <rect x="11" y="14" width="18" height="3.5" rx="1.5" fill="#f4ebd9" />
+              <circle cx="20" cy="10" r="5.5" fill="#ffa200" />
+              <ellipse cx="24" cy="5.5" rx="3" ry="1.5" transform="rotate(-20 24 5.5)" fill="#4d9038" />
+            </svg>
+            <span>노란 유자</span>
+          </button>
+          <button type="button" class="chip" data-hat="astra" aria-checked="false">
+            <svg viewBox="0 0 40 40">
+              <circle cx="20" cy="24" r="9.5" fill="#e39a62" />
+              <path d="M9 21a11 11 0 0 1 22 0z" fill="#f5ecdc" />
+              <circle cx="9" cy="17" r="4.8" fill="#f5ecdc" stroke="#d9cdb8" stroke-width="1.2" />
+              <circle cx="31" cy="17" r="4.8" fill="#f5ecdc" stroke="#d9cdb8" stroke-width="1.2" />
+            </svg>
+            <span>양머리 수건</span>
+          </button>
+          <button type="button" class="chip" data-hat="sylph" aria-checked="false">
+            <svg viewBox="0 0 40 40">
+              <circle cx="20" cy="26" r="9" fill="#e39a62" />
+              <path d="M8 24c3-2 4-13 12-16 8 3 9 14 12 16z" fill="#8a9e7b" />
+              <circle cx="20" cy="7" r="3.5" fill="#ffcf40" />
+            </svg>
+            <span>사우나햇·오리</span>
+          </button>
+          <button type="button" class="chip" data-hat="terra" aria-checked="false">
+            <svg viewBox="0 0 40 40">
+              <circle cx="20" cy="25" r="9.5" fill="#e39a62" />
+              <rect x="10" y="13" width="20" height="4" rx="1.5" fill="#f4ebd9" />
+              <rect x="11" y="9.5" width="18" height="3.5" rx="1.5" fill="#e8781f" />
+            </svg>
+            <span>접은 수건</span>
+          </button>
+        </div>
+        <button id="btn-enter-onsen" class="primary" type="button">
+          노천탕 들어가기
+        </button>
+        <p class="small">소리가 함께 재생돼요. 하단 메뉴에서 언제든 줄이거나 끌 수 있어요.</p>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

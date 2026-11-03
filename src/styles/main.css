@@ -1,0 +1,904 @@
+:root {
+  --ink: #1d120b;
+  --glass: #24160db8;
+  --glass-strong: #2b1a0fe6;
+  --line: #ffd8b02e;
+  --text: #f7ece0;
+  --muted: #d6bc9f;
+  --ember: #ff9a3c;
+  --ember-deep: #e0631c;
+  --ember-soft: #ff9a3c33;
+  --cool: #8fc3d6;
+  --tr-w: 224px;
+  --actions-h: 58px;
+  --ui: 'Pretendard Variable', 'Pretendard', 'Apple SD Gothic Neo', 'Malgun Gothic',
+    system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ink);
+  color: var(--text);
+  font-family: var(--ui);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+#scene-root {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  outline: none;
+  z-index: 1;
+}
+
+#scene-root canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--ember);
+  outline-offset: 2px;
+}
+
+/* ── 상단 좌/우 HUD (사우나 고요 .hud.tl / .hud.tr 구조) ── */
+.hud {
+  position: fixed;
+  z-index: 5;
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  pointer-events: none;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+}
+
+.hud.tl {
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  left: calc(14px + env(safe-area-inset-left, 0px));
+  max-width: min(
+    340px,
+    calc(
+      100vw - 36px - var(--tr-w) - env(safe-area-inset-left, 0px) -
+        env(safe-area-inset-right, 0px)
+    )
+  );
+  padding: 12px 16px;
+  display: grid;
+  gap: 4px;
+}
+
+.brand {
+  letter-spacing: 0.14em;
+  color: var(--ember);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.room {
+  letter-spacing: -0.01em;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.room small {
+  color: var(--muted);
+  letter-spacing: 0;
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.ppl {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+}
+
+.room-ch {
+  opacity: 0.85;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.muted-seg {
+  color: var(--muted);
+  font-size: 11.5px;
+  margin-left: 3px;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ember);
+  box-shadow: 0 0 0 3px var(--ember-soft);
+  flex-shrink: 0;
+  animation: pulseDot 2.4s ease-in-out infinite;
+}
+
+.dot.online {
+  background: #34d399;
+  box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.24);
+}
+
+@keyframes pulseDot {
+  50% {
+    box-shadow: 0 0 0 6px transparent;
+  }
+}
+
+.note {
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+/* ── 우측 상단 수온계 & 구역 바로가기 (.hud.tr) ── */
+.hud.tr {
+  top: calc(14px + env(safe-area-inset-top, 0px));
+  right: calc(14px + env(safe-area-inset-right, 0px));
+  min-width: 196px;
+  max-width: 248px;
+  padding: 10px 14px 12px;
+  display: grid;
+  gap: 7px;
+}
+
+.therm {
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.therm b {
+  letter-spacing: -0.02em;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.therm span {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.therm small {
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  margin-left: auto;
+  font-size: 11px;
+}
+
+.meta {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+
+.meta b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.bar {
+  color: var(--muted);
+  font-size: 11px;
+  display: grid;
+  gap: 4px;
+}
+
+.bar-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bar-track {
+  background: #ffffff1f;
+  border-radius: 3px;
+  height: 5px;
+  overflow: hidden;
+}
+
+.bar-track i {
+  display: block;
+  height: 100%;
+  width: 45%;
+  background: linear-gradient(
+    90deg,
+    var(--cool),
+    #f4c069,
+    var(--ember),
+    var(--ember-deep)
+  );
+  background-size: 260px 100%;
+  transition: width 0.4s ease;
+}
+
+.sets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  pointer-events: auto;
+}
+
+.step {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--muted);
+  transition: all 0.15s ease;
+}
+
+.step:hover {
+  border-color: var(--ember);
+  color: var(--text);
+}
+
+.step.now {
+  border-color: var(--ember);
+  background: var(--ember-soft);
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* ── 하단 중앙 액션 바 (.actions) ── */
+.actions {
+  position: fixed;
+  z-index: 6;
+  width: max-content;
+  max-width: min(680px, calc(100vw - 20px));
+  left: 0;
+  right: 0;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  margin-inline: auto;
+  padding: 5px;
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: center;
+  align-items: center;
+  gap: 3px;
+  background: #22140bcc;
+  border: 1px solid #ffd6aa2b;
+  border-radius: 14px;
+  backdrop-filter: blur(12px) saturate(1.15);
+  -webkit-backdrop-filter: blur(12px) saturate(1.15);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.38);
+  overflow-x: auto;
+}
+
+.actions > button {
+  white-space: nowrap;
+  min-height: 36px;
+  color: var(--text);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 11px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  flex: 0 0 auto;
+}
+
+.actions > button:hover {
+  background: #ffd6aa1f;
+}
+
+.actions > button.on,
+.actions > button[aria-expanded='true'] {
+  background: var(--ember-soft);
+  border-color: #ff9a3c73;
+  color: #fff5e9;
+}
+
+.sep {
+  background: #ffd6aa29;
+  flex: none;
+  width: 1px;
+  height: 18px;
+  margin: 0 2px;
+}
+
+/* ── 팝업 트레이 (.tray) ── */
+.tray {
+  position: fixed;
+  z-index: 7;
+  width: min(410px, calc(100vw - 24px));
+  left: 0;
+  right: 0;
+  bottom: calc(22px + var(--actions-h, 58px) + env(safe-area-inset-bottom, 0px));
+  margin-inline: auto;
+  padding: 14px 15px;
+  background: var(--glass-strong);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  max-height: calc(100dvh - 110px);
+  overflow-y: auto;
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.48);
+  animation: trayFade 0.18s ease-out;
+}
+
+@keyframes trayFade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.trayTitle {
+  color: var(--muted);
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ── 모자 칩 (.chips / .chip) ── */
+.chips {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.chip {
+  border: 1px solid var(--line);
+  background: #ffffff0a;
+  border-radius: 12px;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 10px 6px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.chip:hover {
+  background: #ffffff14;
+}
+
+.chip svg {
+  width: 34px;
+  height: 34px;
+}
+
+.chip[aria-checked='true'] {
+  border-color: var(--ember);
+  background: var(--ember-soft);
+  color: #fff6ea;
+  font-weight: 600;
+}
+
+/* ── 인라인 프로필 변경 폼 ── */
+.inline-profile-form {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1.1fr auto;
+  gap: 6px;
+}
+
+.inline-profile-form input,
+.wish-inline-form input,
+.search-box {
+  background: rgba(15, 9, 5, 0.55);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  color: var(--text);
+  min-width: 0;
+}
+
+.inline-profile-form input::placeholder,
+.wish-inline-form input::placeholder,
+.search-box::placeholder {
+  color: rgba(214, 188, 159, 0.55);
+}
+
+.mini-submit-btn {
+  background: linear-gradient(180deg, #ffa54d, var(--ember-deep));
+  color: #2a1406;
+  border: 0;
+  border-radius: 10px;
+  padding: 0 12px;
+  min-height: 35px;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.mini-secondary-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0 12px;
+  min-height: 35px;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+/* ── 공간 이동 버튼 (.spaces / .spaceBtn) ── */
+.spaces {
+  display: grid;
+  gap: 6px;
+}
+
+.spaceBtn {
+  text-align: left;
+  border: 1px solid var(--line);
+  background: #ffffff0a;
+  border-radius: 12px;
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  gap: 1px 10px;
+  padding: 9px 12px;
+  transition: all 0.15s ease;
+}
+
+.spaceBtn:hover {
+  background: #ffffff14;
+}
+
+.spaceBtn[aria-current='true'] {
+  border-color: var(--ember);
+  background: var(--ember-soft);
+}
+
+.spaceBtn .n {
+  color: var(--ember);
+  text-align: center;
+  grid-row: span 2;
+  align-self: center;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.spaceBtn b {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.spaceBtn small {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+/* ── 채널 선택 그리드 (.roomPick / .roomList) ── */
+.roomPick {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.roomList {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.roomBtn {
+  border: 1px solid var(--line);
+  background: #ffffff0a;
+  border-radius: 10px;
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+  padding: 6px 4px;
+}
+
+.roomBtn:hover {
+  border-color: var(--ember);
+}
+
+.roomBtn[aria-current='true'] {
+  border-color: var(--ember);
+  background: var(--ember-soft);
+}
+
+.roomBtn b {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.roomBtn small {
+  color: var(--muted);
+  font-size: 10.5px;
+}
+
+.full-room-btn {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.full-room-btn:hover {
+  color: var(--text);
+  border-color: var(--ember);
+}
+
+/* ── 매점 간식 메뉴 (.menuGrid / .menuBtn) ── */
+.menuGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.menuBtn {
+  border: 1px solid var(--line);
+  text-align: left;
+  background: #ffffff0a;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+}
+
+.menuBtn:hover {
+  background: #ffd6aa1a;
+}
+
+.menuBtn.active {
+  border-color: var(--ember);
+  background: var(--ember-soft);
+}
+
+.menuDot {
+  border-radius: 50%;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.28);
+}
+
+.snack-actions-row {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 6px;
+}
+
+/* ── 소원 유자 방명록 ── */
+.wish-inline-form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+}
+
+.wish-feed-scroll {
+  display: grid;
+  gap: 6px;
+  max-height: 185px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.wish-item-card {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+  padding: 8px 11px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.wish-item-card:hover {
+  background: rgba(255, 154, 60, 0.12);
+  border-color: var(--ember);
+}
+
+.wish-item-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--ember);
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+.wish-item-msg {
+  font-size: 12.5px;
+  color: var(--text);
+  line-height: 1.45;
+  word-break: keep-all;
+}
+
+/* ── 더보기 트레이 (.more-grid / .mixer-sliders) ── */
+.more-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.mixer-sliders {
+  display: grid;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.vol-row {
+  display: grid;
+  grid-template-columns: 102px 1fr;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.vol-row input[type='range'] {
+  width: 100%;
+  accent-color: var(--ember);
+  cursor: pointer;
+}
+
+/* ── 상단 토스트 알림 & 하단 좌측 힌트 ── */
+.toast {
+  position: fixed;
+  z-index: 9;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  left: 0;
+  right: 0;
+  top: calc(16px + env(safe-area-inset-top, 0px));
+  margin-inline: auto;
+  padding: 10px 16px;
+  background: var(--glass-strong);
+  border: 1px solid var(--ember);
+  border-radius: 12px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.42);
+  animation: toastFade 0.22s ease-out;
+}
+
+@keyframes toastFade {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hint {
+  position: fixed;
+  z-index: 4;
+  left: calc(16px + env(safe-area-inset-left, 0px));
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  color: var(--muted);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+  pointer-events: none;
+  max-width: 240px;
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* ── 첫 입장 웰컴 오버레이 & 모달 (.entry / .card) ── */
+.entry {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  padding: 20px max(16px, env(safe-area-inset-right, 0px)) 20px
+    max(16px, env(safe-area-inset-left, 0px));
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  background: radial-gradient(at 50% 40%, #1d120b66, #1d120bd9);
+  display: grid;
+  place-items: safe center;
+  overflow-y: auto;
+}
+
+.card {
+  background: var(--glass-strong);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  width: min(468px, 100%);
+  padding: 26px 24px 22px;
+  display: grid;
+  gap: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+}
+
+.card.card-wide {
+  width: min(580px, 100%);
+}
+
+.card h1 {
+  letter-spacing: -0.02em;
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.card h1 span {
+  letter-spacing: 0.18em;
+  color: var(--ember);
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  display: block;
+}
+
+.tagline {
+  color: var(--text);
+  word-break: keep-all;
+  margin: 0 0 -6px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.lead {
+  color: var(--muted);
+  word-break: keep-all;
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+}
+
+.label {
+  color: var(--muted);
+  margin: 4px 0 -4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.primary {
+  background: linear-gradient(180deg, #ffa54d, var(--ember-deep));
+  color: #2a1406;
+  border: 0;
+  border-radius: 14px;
+  min-height: 48px;
+  font-size: 15px;
+  font-weight: 700;
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+
+.primary:hover {
+  filter: brightness(1.06);
+}
+
+.primary:active {
+  transform: translateY(1px);
+}
+
+.small {
+  color: var(--muted);
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.modal-head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-head-row h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.close-pill-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 12px;
+}
+
+.all-rooms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(125px, 1fr));
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+/* ── 모바일 및 작은 화면 반응형 ── */
+@media (max-width: 720px) {
+  .note,
+  .hint {
+    display: none;
+  }
+  :root {
+    --tr-w: 164px;
+  }
+  .room {
+    font-size: 15.5px;
+  }
+  .therm b {
+    font-size: 24px;
+  }
+  .hud.tl {
+    padding: 10px 12px;
+  }
+  .hud.tr {
+    min-width: 0;
+    width: var(--tr-w);
+    padding: 9px 11px;
+  }
+  .sets {
+    display: none;
+  }
+  .actions > button {
+    padding: 0 8px;
+    font-size: 12px;
+  }
+  .inline-profile-form {
+    grid-template-columns: 1fr;
+  }
+}
