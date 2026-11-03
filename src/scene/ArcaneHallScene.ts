@@ -335,17 +335,31 @@ export class ArcaneHallScene {
   }
 
   public setSelfIdentity(seat: number): void {
+    const prevSeat = this.selfSeat;
     this.selfSeat = seat;
-    if (seat >= 0 && seat < STUDY_CHAIR_SLOTS.length) {
-      const slot = STUDY_CHAIR_SLOTS[seat];
-      this.selfChairIndex = slot.index;
-      this.selfX = slot.seatX;
-      this.selfZ = slot.seatZ;
-      this.selfYaw = slot.facingYaw;
-      this.selfPose = 'sitting';
-      this.cameraTarget.set(this.selfX, 0.85, this.selfZ);
-      this.callbacks.onSeatChanged(slot.index, slot.zoneName);
+    if (prevSeat !== seat && this.avatarMeshes.has(prevSeat)) {
+      const oldMesh = this.avatarMeshes.get(prevSeat);
+      if (oldMesh) {
+        this.scene.remove(oldMesh.group);
+        oldMesh.dispose();
+      }
+      this.avatarMeshes.delete(prevSeat);
+      this.latestVisitors.delete(prevSeat);
     }
+
+    const slotIdx =
+      seat >= 7 && seat < STUDY_CHAIR_SLOTS.length
+        ? seat
+        : 7 + (Math.abs(seat) % 14);
+    const slot = STUDY_CHAIR_SLOTS[slotIdx] ?? STUDY_CHAIR_SLOTS[0];
+    this.selfChairIndex = slot.index;
+    this.selfX = slot.seatX;
+    this.selfZ = slot.seatZ;
+    this.selfYaw = slot.facingYaw;
+    this.selfPose = 'sitting';
+    this.cameraTarget.set(this.selfX, 0.85, this.selfZ);
+    this.callbacks.onSeatChanged(slot.index, slot.zoneName);
+    this.broadcastSelfState(true);
   }
 
   public setSelfFocusUntil(focusUntil: number | null): void {

@@ -398,6 +398,9 @@ function bootstrapOnsenApp(): void {
       audio.playLumosChime(true);
       showToast(`💧 ${visitor.name}님이 온천수를 끼얹으며 온기를 나눴어요`);
     },
+    onSelfSeatAssigned: (seat) => {
+      hallScene.setSelfIdentity(seat);
+    },
   });
 
   // 초기 스냅샷 동기화 및 프로필 전송
