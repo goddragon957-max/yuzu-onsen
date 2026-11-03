@@ -1,6 +1,7 @@
 import type { WeatherMood } from '@/types/protocol';
 
 export interface SoundMixerLevels {
+  bgm: number; // 0..1 유자 노천탕 겨울 캐롤 BGM (Flow Music 생성 트랙)
   water: number; // 0..1 온천 폭포·물줄기 소리
   wind: number; // 0..1 산바람·설경 바람 소리
   fire: number; // 0..1 족욕탕 모닥불 장작 타는 소리
@@ -8,7 +9,7 @@ export interface SoundMixerLevels {
 }
 
 /**
- * 온라인 노천탕(유자탕) 전용 4채널 믹서 내장 Web Audio API 절차적 신디사이저.
+ * 온라인 노천탕(유자탕) 전용 5채널 믹서(겨울 캐롤 BGM + Web Audio 절차적 자연음) 엔진.
  */
 export class ArcaneAudioEngine {
   private ctx: AudioContext | null = null;
@@ -16,11 +17,13 @@ export class ArcaneAudioEngine {
   private streamGain: GainNode | null = null;
   private breezeGain: GainNode | null = null;
   private fireGain: GainNode | null = null;
+  private bgmAudio: HTMLAudioElement | null = null;
   private dropletTimer: number | null = null;
   private muted = false;
   private unlocked = false;
   private currentMood: WeatherMood = 'starlight';
   private levels: SoundMixerLevels = {
+    bgm: 0.55,
     water: 0.8,
     wind: 0.65,
     fire: 0.7,
@@ -53,11 +56,24 @@ export class ArcaneAudioEngine {
     if (this.ctx.state === 'suspended') {
       await this.ctx.resume();
     }
+
+    if (!this.bgmAudio) {
+      const audio = new Audio('/bgm/winter-carol.mp3');
+      audio.loop = true;
+      audio.preload = 'auto';
+      audio.volume = this.muted
+        ? 0
+        : Math.min(1, Math.max(0, this.levels.bgm * 0.72));
+      this.bgmAudio = audio;
+    }
+
     this.unlocked = true;
+    this.syncBgmPlayback();
   }
 
   public setMuted(muted: boolean): void {
     this.muted = muted;
+    this.syncBgmPlayback();
     if (!this.ctx || !this.masterGain) return;
     const now = this.ctx.currentTime;
     this.masterGain.gain.cancelScheduledValues(now);
@@ -77,7 +93,29 @@ export class ArcaneAudioEngine {
     this.applyMixerGains();
   }
 
+  private syncBgmPlayback(): void {
+    if (!this.bgmAudio) return;
+    const targetVol = this.muted
+      ? 0
+      : Math.min(1, Math.max(0, this.levels.bgm * 0.72));
+    this.bgmAudio.volume = targetVol;
+
+    if (!this.unlocked || this.muted || this.levels.bgm <= 0.01) {
+      if (!this.bgmAudio.paused) {
+        this.bgmAudio.pause();
+      }
+      return;
+    }
+
+    if (this.bgmAudio.paused) {
+      void this.bgmAudio.play().catch(() => {
+        // 브라우저 자동재생 정책으로 차단된 경우 다음 인터랙션에서 재생
+      });
+    }
+  }
+
   private applyMixerGains(): void {
+    this.syncBgmPlayback();
     if (!this.ctx || !this.streamGain || !this.breezeGain || !this.fireGain) {
       return;
     }

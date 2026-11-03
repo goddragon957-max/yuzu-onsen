@@ -224,6 +224,9 @@ function bootstrapOnsenApp(): void {
   const btnFocusTimer = document.getElementById('btn-focus-timer');
   const btnBellRing = document.getElementById('btn-bell-ring');
   const btnAudioMute = document.getElementById('btn-audio-mute');
+  const sliderBgm = document.getElementById(
+    'slider-bgm'
+  ) as HTMLInputElement | null;
   const sliderWater = document.getElementById(
     'slider-water'
   ) as HTMLInputElement | null;
@@ -676,12 +679,20 @@ function bootstrapOnsenApp(): void {
     const muted = audio.toggleMute();
     if (btnAudioMute) {
       btnAudioMute.innerHTML = muted
-        ? '<span>🔇 자연의 소리: 꺼짐</span>'
-        : '<span>🔊 자연의 소리: 켜짐</span>';
+        ? '<span>🔇 캐롤 & 자연 소리: 꺼짐</span>'
+        : '<span>🔊 캐롤 & 자연 소리: 켜짐</span>';
     }
-    showToast(muted ? '자연의 소리를 음소거했어요' : '자연의 소리를 다시 켰어요');
+    showToast(
+      muted
+        ? '겨울 캐롤 BGM과 자연의 소리를 음소거했어요'
+        : '겨울 캐롤 BGM과 자연의 소리를 다시 켰어요'
+    );
   });
 
+  sliderBgm?.addEventListener('input', () => {
+    void audio.unlock();
+    audio.setLevels({ bgm: Number(sliderBgm.value) / 100 });
+  });
   sliderWater?.addEventListener('input', () => {
     audio.setLevels({ water: Number(sliderWater.value) / 100 });
   });
