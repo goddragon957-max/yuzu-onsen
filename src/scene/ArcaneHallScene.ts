@@ -347,10 +347,12 @@ export class ArcaneHallScene {
       this.latestVisitors.delete(prevSeat);
     }
 
+    // 모든 신규 입장 손님이 중앙 유자 대노천탕에서 서로 바로 만날 수 있도록 대노천탕 빈 좌석(0..23 중 마스코트 제외)에 배치
+    const mainBathHumanSlots = [
+      0, 1, 3, 4, 5, 6, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 23,
+    ];
     const slotIdx =
-      seat >= 7 && seat < STUDY_CHAIR_SLOTS.length
-        ? seat
-        : 7 + (Math.abs(seat) % 14);
+      mainBathHumanSlots[Math.abs(seat - 7) % mainBathHumanSlots.length] ?? 0;
     const slot = STUDY_CHAIR_SLOTS[slotIdx] ?? STUDY_CHAIR_SLOTS[0];
     this.selfChairIndex = slot.index;
     this.selfX = slot.seatX;

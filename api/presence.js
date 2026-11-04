@@ -184,12 +184,7 @@ function assignSeatForClient(room, clientId, preferredSeat) {
     return preferredSeat;
   }
 
-  let hash = 0;
-  for (let i = 0; i < clientId.length; i += 1) {
-    hash = (hash * 31 + clientId.charCodeAt(i)) >>> 0;
-  }
-  for (let offset = 0; offset < 90; offset += 1) {
-    const candidate = 7 + ((hash + offset) % 90);
+  for (let candidate = 7; candidate <= 96; candidate += 1) {
     if (!usedSeats.has(candidate)) {
       return candidate;
     }
@@ -262,19 +257,40 @@ export default async function handler(req, res) {
   }
 
   if (req.method === 'POST') {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
+    let body = {};
+    if (typeof req.body === 'string') {
+      try {
+        body = JSON.parse(req.body);
+      } catch {
+        body = {};
+      }
+    } else if (req.body && typeof req.body === 'object') {
+      body = req.body;
+    }
+
     const roomId = body.room || 'hall-01';
     const selfId = String(body.selfId || `anon-${now}`).slice(0, 40);
     const room = getOrCreateRoom(roomId);
     pruneStaleVisitors(room, now);
 
+    if (body.event === 'leave') {
+      room.visitorsById.delete(selfId);
+      room.revision += 1;
+      return res.status(200).json({ ok: true, revision: room.revision });
+    }
+
     const seat = assignSeatForClient(room, selfId, body.seat);
     const existing = room.visitorsById.get(selfId);
 
-    const baseSlotIdx = 7 + (seat % 14);
-    const defaultAngle = ((baseSlotIdx - 7) / 14) * Math.PI * 2;
-    const defaultX = Number((Math.cos(defaultAngle) * 4.5).toFixed(2));
-    const defaultZ = Number((0.5 + Math.sin(defaultAngle) * 3.4).toFixed(2));
+    // 중앙 대노천탕(Main Bath) 빈 좌석 인덱스 매핑 (주민 좌석 2, 7, 13 제외)
+    const MAIN_BATH_HUMAN_SLOTS = [
+      0, 1, 3, 4, 5, 6, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 23,
+    ];
+    const baseSlotIdx =
+      MAIN_BATH_HUMAN_SLOTS[Math.abs(seat - 7) % MAIN_BATH_HUMAN_SLOTS.length];
+    const defaultAngle = (baseSlotIdx / 18) * Math.PI * 2;
+    const defaultX = Number((Math.cos(defaultAngle) * 5.4).toFixed(2));
+    const defaultZ = Number((0.5 + Math.sin(defaultAngle) * 4.2).toFixed(2));
 
     const updatedVisitor = {
       id: selfId,

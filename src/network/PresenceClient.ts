@@ -24,6 +24,7 @@ export interface PresenceListeners {
   onConnectionStateChange: (connected: boolean, roomId: string) => void;
   onRemoteLumos: (visitor: ScholarVisitor) => void;
   onSelfSeatAssigned?: (seat: number) => void;
+  onPeerJoined?: (visitor: ScholarVisitor) => void;
 }
 
 interface ExtendedSnapshotPacket extends SnapshotPacket {
@@ -34,16 +35,14 @@ interface ExtendedSnapshotPacket extends SnapshotPacket {
   } | null;
 }
 
-function getOrCreateTabSelfId(): string {
-  try {
-    const existing = window.sessionStorage.getItem('onsen.tabSelfId.v2');
-    if (existing) return existing;
-    const created = `bather-${Math.random().toString(36).slice(2, 8)}`;
-    window.sessionStorage.setItem('onsen.tabSelfId.v2', created);
-    return created;
-  } catch {
-    return `bather-${Math.random().toString(36).slice(2, 8)}`;
-  }
+const MAIN_BATH_HUMAN_SLOTS = [
+  0, 1, 3, 4, 5, 6, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 23,
+];
+
+function createUniqueTabSelfId(): string {
+  const rand = Math.random().toString(36).slice(2, 9);
+  const tail = Date.now().toString(36).slice(-4);
+  return `bather-${rand}-${tail}`;
 }
 
 function deriveSeatFromId(id: string): number {
@@ -58,7 +57,7 @@ export class PresenceClient {
   private ws: WebSocket | null = null;
   private broadcastChannel: BroadcastChannel | null = null;
   private roomId: string;
-  private selfId = getOrCreateTabSelfId();
+  private selfId = createUniqueTabSelfId();
   private selfSeat = deriveSeatFromId(this.selfId);
   private visitorsBySeat = new Map<number, ScholarVisitor>();
   private wishes: WishCandle[] = [];
@@ -70,12 +69,14 @@ export class PresenceClient {
   private lastKnownLumosBySeat = new Map<number, number>();
   private lastKnownBellId: string | null = null;
   private knownWishIds = new Set<string>();
+  private knownHumanSeats = new Set<number>();
 
   constructor(initialRoomId: string, listeners: PresenceListeners) {
     this.roomId = sanitizeRoomId(initialRoomId);
     this.listeners = listeners;
     this.seedFallbackState();
     this.setupLocalBroadcastChannel();
+    this.setupUnloadLeaveBeacon();
   }
 
   public getRoomId(): string {
@@ -132,6 +133,25 @@ export class PresenceClient {
         this.usingHttpSync = false;
         this.stopHttpPresenceSync();
         this.listeners.onConnectionStateChange(true, this.roomId);
+        const selfVisitor = this.visitorsBySeat.get(this.selfSeat);
+        if (selfVisitor) {
+          this.sendPacket({
+            type: 'profile',
+            name: selfVisitor.name,
+            house: selfVisitor.house,
+            focusTopic: selfVisitor.focusTopic,
+          });
+          this.sendPacket({
+            type: 'state',
+            pose: selfVisitor.pose,
+            chairIndex: selfVisitor.chairIndex,
+            x: selfVisitor.x,
+            z: selfVisitor.z,
+            yaw: selfVisitor.yaw,
+            lumosAt: selfVisitor.lumosAt,
+            focusUntil: selfVisitor.focusUntil,
+          });
+        }
       });
 
       ws.addEventListener('message', (event: MessageEvent) => {
@@ -362,12 +382,14 @@ export class PresenceClient {
     this.selfId = packet.selfId;
     this.selfSeat = packet.selfSeat;
 
-    if (seatChanged) {
-      this.listeners.onSelfSeatAssigned?.(this.selfSeat);
-    }
-
     this.visitorsBySeat.clear();
+    const currentHumanSeats = new Set<number>();
+
     for (const v of packet.visitors) {
+      if (!v.isResident) {
+        currentHumanSeats.add(v.seat);
+      }
+
       if (v.seat === this.selfSeat && prevSelfVisitor) {
         // 내 로컬 위치·포즈는 부드러운 조작을 위해 로컬 최신값 우선 유지
         this.visitorsBySeat.set(v.seat, {
@@ -386,6 +408,14 @@ export class PresenceClient {
       } else {
         this.visitorsBySeat.set(v.seat, v);
         if (
+          !v.isResident &&
+          v.seat !== this.selfSeat &&
+          !this.knownHumanSeats.has(v.seat)
+        ) {
+          this.knownHumanSeats.add(v.seat);
+          this.listeners.onPeerJoined?.(v);
+        }
+        if (
           v.seat !== this.selfSeat &&
           v.lumosAt !== null &&
           this.lastKnownLumosBySeat.get(v.seat) !== v.lumosAt
@@ -396,12 +426,22 @@ export class PresenceClient {
       }
     }
 
+    for (const oldSeat of Array.from(this.knownHumanSeats)) {
+      if (!currentHumanSeats.has(oldSeat)) {
+        this.knownHumanSeats.delete(oldSeat);
+      }
+    }
+
+    if (seatChanged) {
+      this.listeners.onSelfSeatAssigned?.(this.selfSeat);
+    }
+
     // 새 소원 유자 알림 감지
     if (Array.isArray(packet.wishes)) {
       for (const w of packet.wishes) {
         if (!this.knownWishIds.has(w.id)) {
           this.knownWishIds.add(w.id);
-          if (Date.now() - w.createdAt < 10000) {
+          if (Math.abs(Date.now() - w.createdAt) < 15000) {
             this.listeners.onWishCreated(w);
           }
         }
@@ -414,7 +454,7 @@ export class PresenceClient {
     if (
       packet.lastBell &&
       packet.lastBell.id !== this.lastKnownBellId &&
-      Date.now() - packet.lastBell.serverTime < 8000
+      Math.abs(Date.now() - packet.lastBell.serverTime) < 12000
     ) {
       this.lastKnownBellId = packet.lastBell.id;
       this.listeners.onBellResonance(packet.lastBell.triggeredBy);
@@ -517,8 +557,11 @@ export class PresenceClient {
       this.visitorsBySeat.set(r.seat, r);
     }
 
-    const slotIdx = 7 + (this.selfSeat % 14);
-    const slot = STUDY_CHAIR_SLOTS[slotIdx] ?? STUDY_CHAIR_SLOTS[7];
+    const slotIdx =
+      MAIN_BATH_HUMAN_SLOTS[
+        Math.abs(this.selfSeat - 7) % MAIN_BATH_HUMAN_SLOTS.length
+      ] ?? 0;
+    const slot = STUDY_CHAIR_SLOTS[slotIdx] ?? STUDY_CHAIR_SLOTS[0];
 
     this.visitorsBySeat.set(this.selfSeat, {
       id: this.selfId,
@@ -539,6 +582,31 @@ export class PresenceClient {
     for (const w of this.wishes) {
       this.knownWishIds.add(w.id);
     }
+  }
+
+  private setupUnloadLeaveBeacon(): void {
+    const sendLeave = (): void => {
+      if (!this.usingHttpSync || typeof navigator.sendBeacon !== 'function') {
+        return;
+      }
+      try {
+        const blob = new Blob(
+          [
+            JSON.stringify({
+              room: this.roomId,
+              selfId: this.selfId,
+              event: 'leave',
+            }),
+          ],
+          { type: 'application/json' }
+        );
+        navigator.sendBeacon('/api/presence', blob);
+      } catch {
+        // 무시
+      }
+    };
+    window.addEventListener('pagehide', sendLeave);
+    window.addEventListener('beforeunload', sendLeave);
   }
 
   private cleanupSocket(): void {

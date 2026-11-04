@@ -162,6 +162,7 @@ function bootstrapOnsenApp(): void {
   const channelLabelEl = document.getElementById('channel-label');
   const pplHereEl = document.getElementById('ppl-here');
   const pplHumanEl = document.getElementById('ppl-human');
+  const onlineGuestsListEl = document.getElementById('online-guests-list');
   const hudNoteEl = document.getElementById('hud-note');
 
   const tempValEl = document.getElementById('temp-val');
@@ -359,10 +360,40 @@ function bootstrapOnsenApp(): void {
       channelLabelEl.textContent = `제${roomNum}온천 · `;
     }
     const totalCount = visitors.length;
-    const residentCount = visitors.filter((v) => v.isResident).length;
-    const humanCount = Math.max(1, totalCount - residentCount);
+    const humanVisitors = visitors.filter((v) => !v.isResident);
+    const humanCount = Math.max(1, humanVisitors.length);
     if (pplHereEl) pplHereEl.textContent = String(totalCount);
     if (pplHumanEl) pplHumanEl.textContent = String(humanCount);
+
+    if (onlineGuestsListEl) {
+      onlineGuestsListEl.innerHTML = '';
+      const selfSeat = presence?.getSelfSeat();
+      const sortedHumans = [...humanVisitors].sort((a, b) => {
+        if (a.seat === selfSeat) return -1;
+        if (b.seat === selfSeat) return 1;
+        return a.seat - b.seat;
+      });
+
+      for (const guest of sortedHumans) {
+        const isMe = guest.seat === selfSeat;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = isMe ? 'guest-pill self' : 'guest-pill';
+        btn.title = isMe
+          ? '내 캐릭터 시점으로 이동'
+          : `${guest.name}님 위치로 카메라 이동`;
+        btn.textContent = isMe ? `🟢 나(${guest.name})` : `🟢 ${guest.name}`;
+        btn.addEventListener('click', () => {
+          hallScene.focusOnWorldPoint(guest.x, 0.35, guest.z);
+          showToast(
+            isMe
+              ? `내 자리(${guest.name})를 바라봅니다`
+              : `👀 ${guest.name}님의 자리를 바라봅니다 (${guest.focusTopic})`
+          );
+        });
+        onlineGuestsListEl.appendChild(btn);
+      }
+    }
   }
 
   presence = new PresenceClient(initialRoomId, {
@@ -391,7 +422,7 @@ function bootstrapOnsenApp(): void {
       }
       if (hudNoteEl) {
         hudNoteEl.textContent = connected
-          ? '실시간 온천 채널에 연결되어 다른 손님들과 함께 쉬고 있어요.'
+          ? '실시간 온천 채널에 연결되어 있어요. 위 손님 태그를 누르면 해당 손님을 바라봅니다.'
           : '조용한 개인 온천 모드로 카피바라·온천 고양이와 함께 쉬고 있어요.';
       }
       updateRoomHeaderUI(roomId, presence.getVisitors());
@@ -403,6 +434,10 @@ function bootstrapOnsenApp(): void {
     },
     onSelfSeatAssigned: (seat) => {
       hallScene.setSelfIdentity(seat);
+    },
+    onPeerJoined: (visitor) => {
+      audio.playLumosChime(true);
+      showToast(`♨️ ${visitor.name}님이 유자 노천탕에 들어오셨어요!`);
     },
   });
 
