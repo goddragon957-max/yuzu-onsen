@@ -181,9 +181,12 @@ export class ScholarAvatarMesh {
   private lieTarget = 0;
 
   private bowTimer = -1;
+  private splashTimer = -1;
   private useSnackTimer = -1;
   private useSnackAct: 'sip' | 'bite' = 'sip';
   private lumosBoost = 0;
+  private bathPailGroup: THREE.Group | null = null;
+  private splashDroplets: THREE.Group | null = null;
 
   private lastLabelSignature = '';
   private currentHouse: ArcaneHouseId = 'ignis';
@@ -217,6 +220,9 @@ export class ScholarAvatarMesh {
       // 유저 및 온천지기 NPC는 사우나 고요 스타일 관절 인형 캐릭터로 생성
       this.buildArticulatedDoll(visitor.house, visitor.isResident);
     }
+
+    // 편백나무 온천 바가지 및 스플래시 물보라 효과 생성
+    this.buildBathPailAndSplash();
 
     // 발밑 부드러운 그림자 데칼
     this.shadowMesh = new THREE.Mesh(
@@ -451,6 +457,95 @@ export class ScholarAvatarMesh {
       foot.position.set(0, -0.34, 0.03);
       leg.add(foot);
     });
+  }
+
+  /**
+   * 편백나무(Hinoki) 원목 온천 바가지 및 끼얹을 때 튀는 물방울 효과
+   */
+  private buildBathPailAndSplash(): void {
+    const pailGroup = new THREE.Group();
+    const woodMat = new THREE.MeshStandardMaterial({
+      color: 0xd9b37a,
+      roughness: 0.65,
+    });
+    const woodBandMat = new THREE.MeshStandardMaterial({
+      color: 0x6e4e2a,
+      roughness: 0.5,
+    });
+    const waterMat = new THREE.MeshStandardMaterial({
+      color: 0x9be8ff,
+      roughness: 0.1,
+      metalness: 0.1,
+    });
+
+    // 바가지 통
+    const pailTub = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.082, 0.068, 0.085, 16),
+      woodMat
+    );
+    pailTub.position.y = 0;
+    pailGroup.add(pailTub);
+
+    // 바가지 테두리 금속/동테
+    const pailRing = new THREE.Mesh(
+      new THREE.TorusGeometry(0.078, 0.007, 6, 16),
+      woodBandMat
+    );
+    pailRing.rotation.x = Math.PI / 2;
+    pailRing.position.y = 0.02;
+    pailGroup.add(pailRing);
+
+    // 바가지 손잡이
+    const handle = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012, 0.012, 0.13, 8),
+      woodMat
+    );
+    handle.rotation.z = Math.PI / 2;
+    handle.position.set(-0.11, 0.02, 0);
+    pailGroup.add(handle);
+
+    // 바가지 안 물
+    const tubWater = new THREE.Mesh(
+      new THREE.CircleGeometry(0.076, 16),
+      waterMat
+    );
+    tubWater.rotation.x = -Math.PI / 2;
+    tubWater.position.y = 0.038;
+    pailGroup.add(tubWater);
+
+    // 오른손 손목 아래에 결합
+    pailGroup.position.set(0, -0.34, 0.11);
+    pailGroup.rotation.y = Math.PI / 2;
+    pailGroup.visible = false;
+    this.arms[1].add(pailGroup);
+    this.bathPailGroup = pailGroup;
+
+    // 어깨/머리 위 물보라 파티클
+    const dropletsGroup = new THREE.Group();
+    const dropMat = new THREE.MeshBasicMaterial({
+      color: 0xc4f4ff,
+      transparent: true,
+      opacity: 0.85,
+    });
+    const dropletOffsets: ReadonlyArray<[number, number, number, number]> = [
+      [0.08, 0.15, 0.05, 0.026],
+      [-0.06, 0.18, 0.08, 0.022],
+      [0.12, 0.12, -0.05, 0.028],
+      [-0.1, 0.14, -0.06, 0.024],
+      [0.02, 0.22, 0.02, 0.03],
+      [0.16, 0.08, 0.1, 0.02],
+      [-0.14, 0.09, 0.09, 0.022],
+      [0.0, 0.19, -0.1, 0.025],
+    ];
+    for (const [x, y, z, r] of dropletOffsets) {
+      const drop = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), dropMat);
+      drop.position.set(x, y, z);
+      dropletsGroup.add(drop);
+    }
+    dropletsGroup.position.set(0, 0.88, 0);
+    dropletsGroup.visible = false;
+    this.upper.add(dropletsGroup);
+    this.splashDroplets = dropletsGroup;
   }
 
   /**
@@ -777,17 +872,32 @@ export class ScholarAvatarMesh {
   }
 
   /**
-   * 꾸벅 인사하기 모션 (saunagoyo bowT 애니메이션)
+   * 온천 바가지로 물 끼얹기 모션
+   */
+  public triggerSplash(): void {
+    if (this.splashTimer < 0) {
+      this.splashTimer = 0;
+      this.lumosBoost = 1.0;
+      if (this.bathPailGroup) {
+        this.bathPailGroup.visible = !this.isResidentCapybara;
+      }
+    }
+  }
+
+  /**
+   * 꾸벅 인사하기 모션 (공손한 목례 제스처)
    */
   public triggerBow(): void {
     if (this.bowTimer < 0) {
       this.bowTimer = 0;
+      if (this.bathPailGroup) {
+        this.bathPailGroup.visible = false;
+      }
     }
   }
 
   public triggerLumosPulse(): void {
-    this.lumosBoost = 1.0;
-    this.triggerBow();
+    this.triggerSplash();
   }
 
   public syncAppearance(
@@ -805,8 +915,18 @@ export class ScholarAvatarMesh {
     }
 
     if (visitor.lumosAt !== null && now - visitor.lumosAt < 2500) {
+      if (this.splashTimer < 0) {
+        this.triggerSplash();
+      }
+    }
+
+    if (
+      visitor.bowAt !== null &&
+      visitor.bowAt !== undefined &&
+      now - visitor.bowAt < 2500
+    ) {
       if (this.bowTimer < 0) {
-        this.bowTimer = 0;
+        this.triggerBow();
       }
     }
 
@@ -929,31 +1049,113 @@ export class ScholarAvatarMesh {
       0.4 + Math.abs(Math.cos(this.walkPhase)) * 0.03 * this.walkAmp;
     this.group.rotation.x = -0.95 * c;
 
-    // 꾸벅 인사 모션 (bowTimer)
+    // ── 꾸벅 공손한 목례 인사 모션 (bowTimer) ──
     if (this.bowTimer >= 0) {
+      if (this.bathPailGroup) this.bathPailGroup.visible = false;
+      if (this.splashDroplets) this.splashDroplets.visible = false;
+
       this.bowTimer += dt;
       const r = this.bowTimer;
       const raw =
         r < 0.35
           ? r / 0.35
-          : r < 1.75
+          : r < 1.35
             ? 1
-            : Math.max(0, 1 - (r - 1.75) / 0.45);
+            : Math.max(0, 1 - (r - 1.35) / 0.45);
       const ease = raw * raw * (3 - 2 * raw);
-      const bowWave = Math.sin(Math.PI * clamp((r - 0.35) / 1.4, 0, 1));
-      this.upper.rotation.x = 0.48 * bowWave * (1 - c);
-      this.head.rotation.x = 0.18 * bowWave;
-      this.arms[0].rotation.x = lerp(this.arms[0].rotation.x, -1.45, ease);
-      this.arms[0].rotation.z = lerp(this.arms[0].rotation.z, -0.62, ease);
-      this.arms[1].rotation.x = lerp(this.arms[1].rotation.x, -1.45, ease);
-      this.arms[1].rotation.z = lerp(this.arms[1].rotation.z, 0.62, ease);
-      if (r >= 2.2) {
+      const bowWave = Math.sin(Math.PI * clamp((r - 0.25) / 1.3, 0, 1));
+
+      // 상체와 고개를 정중하게 35도 숙임
+      this.upper.rotation.x = 0.46 * bowWave * (1 - c);
+      this.head.rotation.x = 0.22 * bowWave;
+
+      // 두 손을 가슴 앞으로 공손히 모으는 자세
+      this.arms[0].rotation.x = lerp(this.arms[0].rotation.x, -1.35, ease);
+      this.arms[0].rotation.z = lerp(this.arms[0].rotation.z, -0.45, ease);
+      this.arms[1].rotation.x = lerp(this.arms[1].rotation.x, -1.35, ease);
+      this.arms[1].rotation.z = lerp(this.arms[1].rotation.z, 0.45, ease);
+
+      if (r >= 1.8) {
         this.bowTimer = -1;
+      }
+    } else if (this.splashTimer >= 0) {
+      // ── 🪣 편백나무 바가지로 온천수 푸고 어깨 위로 끼얹기 모션 (splashTimer) ──
+      this.splashTimer += dt;
+      const r = this.splashTimer;
+
+      if (this.isResidentCapybara) {
+        // 카피바라는 온천수 속에서 고개를 푹 담갔다가 귀를 털며 상쾌하게 들기
+        const capyWave = Math.sin(r * 4.2);
+        this.head.rotation.x = capyWave * 0.32;
+        this.upper.rotation.x = capyWave * 0.16;
+      } else {
+        if (this.bathPailGroup) {
+          this.bathPailGroup.visible = true;
+        }
+
+        if (r < 0.55) {
+          // [Phase 1: 물 푸기] 상체 앞으로 숙이며 오른손 바가지로 온천수 푹 뜨기
+          const p1 = r / 0.55;
+          const ease1 = p1 * p1 * (3 - 2 * p1);
+          this.upper.rotation.x = lerp(this.upper.rotation.x, 0.32, ease1) * (1 - c);
+          this.head.rotation.x = lerp(this.head.rotation.x, 0.24, ease1);
+          this.arms[1].rotation.x = lerp(this.arms[1].rotation.x, -0.15, ease1);
+          this.arms[1].rotation.z = lerp(this.arms[1].rotation.z, 0.22, ease1);
+          this.arms[0].rotation.x = lerp(this.arms[0].rotation.x, -0.45, ease1);
+
+          if (this.splashDroplets) this.splashDroplets.visible = false;
+        } else if (r < 1.15) {
+          // [Phase 2: 어깨/머리 위로 시원하게 끼얹기] 상체와 고개를 시원하게 젖히며 바가지 뒤집기!
+          const p2 = (r - 0.55) / 0.6;
+          const ease2 = Math.sin(p2 * Math.PI * 0.5);
+          this.upper.rotation.x = lerp(0.32, -0.22, ease2) * (1 - c);
+          this.head.rotation.x = lerp(0.24, -0.32, ease2);
+          this.arms[1].rotation.x = lerp(-0.15, -2.65, ease2);
+          this.arms[1].rotation.z = lerp(0.22, 0.42, ease2);
+          this.arms[0].rotation.x = lerp(-0.45, -0.25, ease2);
+
+          // 물방울 파티클 전개
+          if (this.splashDroplets) {
+            this.splashDroplets.visible = true;
+            const dropProgress = (r - 0.55) / 0.6;
+            this.splashDroplets.position.y = 0.88 - dropProgress * 0.35;
+            const scale = 1.0 + dropProgress * 0.75;
+            this.splashDroplets.scale.set(scale, scale, scale);
+          }
+        } else {
+          // [Phase 3: 개운하게 원래 자세로 복귀]
+          const p3 = Math.min(1, (r - 1.15) / 0.55);
+          const ease3 = p3 * p3 * (3 - 2 * p3);
+          this.upper.rotation.x = lerp(-0.22, 0, ease3) * (1 - c);
+          this.head.rotation.x = lerp(-0.32, 0, ease3);
+          this.arms[1].rotation.x = lerp(-2.65, this.arms[1].rotation.x, ease3);
+          this.arms[1].rotation.z = lerp(0.42, this.arms[1].rotation.z, ease3);
+
+          if (this.splashDroplets) {
+            this.splashDroplets.visible = false;
+          }
+        }
+      }
+
+      if (r >= 1.7) {
+        this.splashTimer = -1;
+        if (this.bathPailGroup) {
+          this.bathPailGroup.visible = false;
+        }
+        if (this.splashDroplets) {
+          this.splashDroplets.visible = false;
+        }
       }
     } else {
       this.upper.rotation.x =
         Math.sin(this.breathePhase * 1.3) * 0.018 + o * 0.05 * (1 - c);
       this.head.rotation.x = 0;
+      if (this.bathPailGroup) {
+        this.bathPailGroup.visible = false;
+      }
+      if (this.splashDroplets) {
+        this.splashDroplets.visible = false;
+      }
     }
 
     this.upper.position.y = Math.sin(this.breathePhase * 1.3) * 0.004;

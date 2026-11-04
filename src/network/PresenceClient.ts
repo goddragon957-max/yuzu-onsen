@@ -23,6 +23,7 @@ export interface PresenceListeners {
   onBellResonance: (triggeredBy: string) => void;
   onConnectionStateChange: (connected: boolean, roomId: string) => void;
   onRemoteLumos: (visitor: ScholarVisitor) => void;
+  onRemoteBow?: (visitor: ScholarVisitor) => void;
   onSelfSeatAssigned?: (seat: number) => void;
   onPeerJoined?: (visitor: ScholarVisitor) => void;
 }
@@ -67,6 +68,7 @@ export class PresenceClient {
   private httpSyncThrottleTimer: number | null = null;
   private usingHttpSync = false;
   private lastKnownLumosBySeat = new Map<number, number>();
+  private lastKnownBowBySeat = new Map<number, number>();
   private lastKnownBellId: string | null = null;
   private knownWishIds = new Set<string>();
   private knownHumanSeats = new Set<number>();
@@ -206,6 +208,7 @@ export class PresenceClient {
       selfVisitor.z = state.z;
       selfVisitor.yaw = state.yaw;
       selfVisitor.lumosAt = state.lumosAt;
+      selfVisitor.bowAt = state.bowAt;
       selfVisitor.focusUntil = state.focusUntil;
       this.listeners.onVisitorsUpdated(this.getVisitors(), this.selfId);
       this.broadcastLocalState(selfVisitor);
@@ -220,6 +223,7 @@ export class PresenceClient {
         z: state.z,
         yaw: state.yaw,
         lumosAt: state.lumosAt,
+        bowAt: state.bowAt,
         focusUntil: state.focusUntil,
       });
     } else if (this.usingHttpSync) {
@@ -355,6 +359,7 @@ export class PresenceClient {
       z: selfVisitor?.z ?? 3.2,
       yaw: selfVisitor?.yaw ?? Math.PI,
       lumosAt: selfVisitor?.lumosAt ?? null,
+      bowAt: selfVisitor?.bowAt ?? null,
       focusUntil: selfVisitor?.focusUntil ?? null,
       ...extraPayload,
     };
@@ -403,6 +408,7 @@ export class PresenceClient {
           z: prevSelfVisitor.z,
           yaw: prevSelfVisitor.yaw,
           lumosAt: prevSelfVisitor.lumosAt,
+          bowAt: prevSelfVisitor.bowAt,
           focusUntil: prevSelfVisitor.focusUntil,
         });
       } else {
@@ -422,6 +428,15 @@ export class PresenceClient {
         ) {
           this.lastKnownLumosBySeat.set(v.seat, v.lumosAt);
           this.listeners.onRemoteLumos(v);
+        }
+        if (
+          v.seat !== this.selfSeat &&
+          v.bowAt !== null &&
+          v.bowAt !== undefined &&
+          this.lastKnownBowBySeat.get(v.seat) !== v.bowAt
+        ) {
+          this.lastKnownBowBySeat.set(v.seat, v.bowAt);
+          this.listeners.onRemoteBow?.(v);
         }
       }
     }

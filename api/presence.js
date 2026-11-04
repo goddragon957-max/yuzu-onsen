@@ -328,6 +328,10 @@ export default async function handler(req, res) {
         body.lumosAt !== undefined
           ? body.lumosAt
           : existing?.visitor.lumosAt ?? null,
+      bowAt:
+        body.bowAt !== undefined
+          ? body.bowAt
+          : existing?.visitor.bowAt ?? null,
       focusUntil:
         body.focusUntil !== undefined
           ? body.focusUntil

@@ -148,6 +148,7 @@ export class ArcaneHallScene {
   private selfZ = STUDY_CHAIR_SLOTS[0].seatZ;
   private selfYaw = STUDY_CHAIR_SLOTS[0].facingYaw;
   private selfLumosAt: number | null = null;
+  private selfBowAt: number | null = null;
   private selfFocusUntil: number | null = null;
 
   private walkTarget: { x: number; z: number; sitChairIndex: number } | null =
@@ -369,20 +370,26 @@ export class ArcaneHallScene {
     this.broadcastSelfState(true);
   }
 
-  public triggerSelfLumos(): void {
+  public triggerSelfSplash(): void {
     this.selfLumosAt = Date.now();
     const selfMesh = this.avatarMeshes.get(this.selfSeat);
     if (selfMesh) {
-      selfMesh.triggerLumosPulse();
+      selfMesh.triggerSplash();
     }
     this.broadcastSelfState(true);
   }
 
+  public triggerSelfLumos(): void {
+    this.triggerSelfSplash();
+  }
+
   public triggerSelfBow(): void {
+    this.selfBowAt = Date.now();
     const selfMesh = this.avatarMeshes.get(this.selfSeat);
     if (selfMesh) {
       selfMesh.triggerBow();
     }
+    this.broadcastSelfState(true);
   }
 
   public getSelfPose(): ScholarDynamicState['pose'] {
@@ -470,6 +477,7 @@ export class ArcaneHallScene {
           z: this.selfZ,
           yaw: this.selfYaw,
           lumosAt: this.selfLumosAt,
+          bowAt: this.selfBowAt,
           focusUntil: this.selfFocusUntil,
         };
         let mesh = this.avatarMeshes.get(v.seat);
@@ -1900,6 +1908,7 @@ export class ArcaneHallScene {
       z: Number(this.selfZ.toFixed(2)),
       yaw: Number(this.selfYaw.toFixed(2)),
       lumosAt: this.selfLumosAt,
+      bowAt: this.selfBowAt,
       focusUntil: this.selfFocusUntil,
     });
   }
@@ -1962,6 +1971,7 @@ export class ArcaneHallScene {
         stored.z = this.selfZ;
         stored.yaw = this.selfYaw;
         stored.lumosAt = this.selfLumosAt;
+        stored.bowAt = this.selfBowAt;
         stored.focusUntil = this.selfFocusUntil;
         mesh.syncAppearance(stored, true, wallNow);
       }

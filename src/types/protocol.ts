@@ -79,6 +79,7 @@ export interface ScholarDynamicState {
   z: number;
   yaw: number;
   lumosAt: number | null;
+  bowAt?: number | null;
   focusUntil: number | null;
 }
 
@@ -138,6 +139,7 @@ export interface ClientStateUpdatePacket {
   z: number;
   yaw: number;
   lumosAt: number | null;
+  bowAt?: number | null;
   focusUntil: number | null;
 }
 

@@ -429,8 +429,14 @@ function bootstrapOnsenApp(): void {
       renderQuickRooms();
     },
     onRemoteLumos: (visitor) => {
+      audio.playPageTurn();
+      showToast(
+        `🪣 ${visitor.name}님이 편백 바가지로 따뜻한 온천수를 끼얹었어요`
+      );
+    },
+    onRemoteBow: (visitor) => {
       audio.playLumosChime(true);
-      showToast(`💧 ${visitor.name}님이 온천수를 끼얹으며 온기를 나눴어요`);
+      showToast(`🙇 ${visitor.name}님이 공손하게 목례를 건넸어요`);
     },
     onSelfSeatAssigned: (seat) => {
       hallScene.setSelfIdentity(seat);
@@ -553,7 +559,7 @@ function bootstrapOnsenApp(): void {
     window.localStorage.setItem(STORAGE_KEYS.SPLASHES, String(splashCount));
     if (splashCountEl) splashCountEl.textContent = String(splashCount);
 
-    hallScene.triggerSelfLumos();
+    hallScene.triggerSelfSplash();
     audio.playPageTurn();
 
     // 온기 게이지 살짝 상승
@@ -580,7 +586,6 @@ function bootstrapOnsenApp(): void {
   // ── 3. 가볍게 목례(인사하기) 액션 ──
   btnActBow?.addEventListener('click', () => {
     hallScene.triggerSelfBow();
-    hallScene.triggerSelfLumos();
     audio.playLumosChime(false);
     showToast('🙇 주변 온천 손님들에게 가볍게 목례를 건넸어요');
   });
